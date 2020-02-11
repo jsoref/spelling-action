@@ -92,27 +92,17 @@ to_publish_whitelist() {
   esac
 }
 
-if [ -z "$junit" ]; then
-  echo "Review results"
-else
-  elapsed=$(echo $(( $(now) - $start)) | perl -pne 's/(\d{9})$/\.$1/')
-
-spelling_header='<?xml version="1.0" encoding="UTF-8"?>
-<testsuite>
-  <testcase name="Spell checking" classname="com.soref.josh.spellchecker" time="'$elapsed'">'
-spelling_footer='  </testcase>
-</testsuite>'
-fi
-
 spelling_warning() {
-  echo "$spelling_header"
-  echo "    <failure message=\"$1\">
-</failure>"
+  OUTPUT="$OUTPUT$spelling_header"
+  OUTPUT="$OUTPUT
+#### $1:
+"
   spelling_body "$2" "$3"
-  echo "$spelling_footer"
+  OUTPUT="$OUTPUT$spelling_footer"
+  comment
 }
 spelling_info() {
-  echo "$spelling_header"
+  OUTPUT="$OUTPUT$spelling_header"
   if [ -z "$2" ]; then
     out="$1"
   else
@@ -121,24 +111,30 @@ spelling_info() {
 $2"
   fi
   spelling_body "$out" "$3"
-  echo "$spelling_footer"
+  OUTPUT="$OUTPUT$spelling_footer"
+  comment
 }
 spelling_body() {
   err="$2"
   if [ -z "$err" ]; then
-    out="$1"
+    OUTPUT="$1"
   else
-    out="$1
+    OUTPUT="$OUTPUT
+$1
 
-To accept these changes, run the commands from Standard Error.
-(They can be run anywhere with permissions to update the bucket.)"
+#### To accept these changes, run the following commands:
+(They can be run anywhere with permissions to update the bucket.)
+
+"'```'"
+$err
+"'```'
   fi
-echo "
-    <system-out><![CDATA[$out]]></system-out>
-    <system-err><![CDATA[$err]]></system-err>"
 }
 new_words() {
   echo "$1" | perl -ne 'next unless s/^\+//;print'
+}
+bullet_words() {
+  echo "$1" | sed -e 's/^(.)/* $1/'
 }
 
 quit() {
@@ -146,6 +142,23 @@ quit() {
     exit
   fi
   exit $1
+}
+
+comment() {
+  if [ -n "$OUTPUT" ]; then
+    echo "Preparing a comment"
+    PAYLOAD=$(echo '{}' | jq --arg body "$OUTPUT" '.body = $body')
+    if [ -n "$GITHUB_EVENT_PATH" ]; then
+      COMMENTS_URL=$(cat $GITHUB_EVENT_PATH | jq -r .pull_request.comments_url)
+    fi
+    if [ -z "${COMMENTS_URL##*:*}" ]; then
+      echo $PAYLOAD
+      echo $COMMENTS_URL
+      curl -s -S -H "Authorization: token $GITHUB_TOKEN" --header "Content-Type: application/json" --data "$PAYLOAD" "$COMMENTS_URL" > /dev/null
+    else
+      echo "$OUTPUT"
+    fi
+  fi
 }
 
 if [ ! -e "$whitelist_path" ]; then
@@ -156,15 +169,7 @@ if [ ! -e "$whitelist_path" ]; then
     echo EOF=EOF
     to_publish_whitelist
   )
-  if [ -z "$junit" ]; then
-    echo "$title."
-    printDetails
-    echo "$instructions"
-  else
-    (
-      spelling_info "$title" "$run_output" "$instructions"
-    ) > "$junit"
-  fi
+      spelling_info "$title" "$(bullet_words "$(cat "$run_output")")" "$instructions"
   quit 2
 fi
 sorted_whitelist="$temp/$(basename $whitelist_path)"
@@ -175,13 +180,7 @@ diff_output=$(diff -U0 "$whitelist_path" "$run_output" |grep -v "$spellchecker" 
 
 if [ -z "$diff_output" ]; then
   title="No new words with misspellings found"
-  if [ -z "$junit" ]; then
-    echo "$title."
-  else
-    (
       spelling_info "$title" "There are currently $(wc -l $whitelist_path|sed -e 's/ .*//') whitelisted items." ""
-    ) > "$junit"
-  fi
   quit 0
 fi
 
@@ -192,16 +191,20 @@ make_instructions() {
   patch_remove=$(echo "$diff_output" | perl -ne 'next unless s/^-([^-])/$1/; print')
   patch_add=$(echo "$diff_output" | perl -ne 'next unless s/^\+([^+])/$1/; print')
   to_retrieve_whitelist
+  echo "$(
   echo '('
   if [ -n "$patch_remove" ]; then
     echo 'egrep -v "$(echo "'"$patch_remove"'" | tr "\n" " " | perl -pne '"'"'s/^/^(/;s/\s$/)\$/;s/\s/|/g'"'"')" whitelist.txt;'
+  else
+    echo 'cat whitelist.txt;'
   fi
   if [ -n "$patch_add" ]; then
     echo 'echo "'
     echo "$patch_add"
     echo '"'
   fi
-  echo ') > new_whitelist.txt && mv new_whitelist.txt whitelist.txt'
+  echo ') | sort -u -f > new_whitelist.txt && mv new_whitelist.txt whitelist.txt'
+)"
   to_publish_whitelist
 }
 
@@ -210,30 +213,12 @@ if [ -z "$new_output" ]; then
   instructions=$(
     make_instructions
   )
-  if [ -z "$junit" ]; then
-    echo "$title."
-    echo "$whitelist_path could be updated:"
-    echo ''
-    echo "$instructions"
-  else
-    (
-      spelling_info "$title" "$(new_words "$diff_output")" "$instructions"
-    ) > "$junit"
-  fi
+      spelling_info "$title" "$(bullet_words "$(new_words "$diff_output")")" "$instructions"
   quit
 fi
 title='New misspellings found, please review'
 instructions=$(
   make_instructions
 )
-if [ -z "$junit" ]; then
-  echo "$title:"
-  echo "$new_output"
-  printDetails
-  echo "$instructions"
-else
-  (
-    spelling_warning "$title" "$new_output" "$instructions"
-  ) > "$junit"
-fi
+    spelling_warning "$title" "$(bullet_words "$new_output")" "$instructions"
 quit 1
