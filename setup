@@ -1,0 +1,41 @@
+#!/bin/bash
+# This CI acceptance test is based on:
+# https://github.com/jsoref/spelling/tree/04648bdc63723e5cdf5cbeaff2225a462807abc8
+# It is conceptually `f` which runs `w` (spelling-unknown-word-splitter)
+# plus `fchurn` which uses `dn` mostly rolled together.
+set -e
+
+spellchecker='/app'
+w_location='https://raw.githubusercontent.com/jsoref/spelling/master/w'
+temp='/tmp/spelling'
+dict="$temp/english.words"
+word_splitter="$spellchecker/spelling-unknown-word-splitter.pl"
+run_output="$spellchecker/unknown.words.txt"
+
+wordlist=https://github.com/jsoref/spelling-action/raw/dictionary/dict.txt
+
+if [ ! -e "$dict" ]; then
+  echo "Retrieving cached $(basename "$wordlist")"
+  # english.words is taken from rpm:
+  # https://rpmfind.net/linux/fedora/linux/development/rawhide/Everything/aarch64/os/Packages/w/"
+  # "words-.*.noarch.rpm"
+  mkdir -p "$temp"
+  (
+    curl -L -s "$wordlist" -o "$dict"
+  ) >/dev/null 2>/dev/null
+fi
+
+if [ ! -e "$word_splitter" ]; then
+  echo "Retrieving w"
+  curl -L -s "$w_location" |\
+    perl -p -n -e "s</usr/share/dict/words><$dict>" > "$word_splitter"
+  get_word_splitter_status="${PIPESTATUS[0]} ${PIPESTATUS[1]}"
+  if [ "$get_word_splitter_status" != '0 0' ]; then
+    echo "$0 failed to retrieve/adapt word splitter ($w_location) ($get_word_splitter_status)"
+    rm -f "$word_splitter"
+    exit 6
+  fi
+  chmod u+x "$word_splitter"
+  echo "Retrieved."
+  ls -la "$word_splitter"
+fi
