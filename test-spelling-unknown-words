@@ -9,12 +9,11 @@ now() {
   date +'%s%N'
 }
 start=$(now)
-spellchecker='action-spelling'
-w_location='https://raw.githubusercontent.com/jsoref/spelling/master/w'
-temp='.ci-temp'
+spellchecker=${spellchecker:-/app}
+temp='/tmp/spelling'
+dict="$temp/english.words"
 whitelist_path="$spellchecker/whitelist.words.txt"
 excludelist_path="$spellchecker/excludes.txt"
-dict="$temp/english.words"
 word_splitter="$spellchecker/spelling-unknown-word-splitter.pl"
 run_output="$spellchecker/unknown.words.txt"
 
@@ -27,16 +26,6 @@ fi
 if [ -z "$project" ]; then
   echo "$0 requires "'$project to be set to your project' >&2
   exit 1
-fi
-
-if [ ! -e "$dict" ]; then
-  echo "Retrieving cached $(basename "$wordlist")"
-  # english.words is taken from rpm:
-  # https://rpmfind.net/linux/fedora/linux/development/rawhide/Everything/aarch64/os/Packages/w/"
-  # "words-.*.noarch.rpm"
-  (
-    gsutil cp -Z $wordlist "$dict"
-  ) >/dev/null 2>/dev/null
 fi
 
 project_file_path() {
@@ -52,28 +41,13 @@ get_project_files() {
     case "$from" in
       gs://*)
         gsutil cp -Z $from $dest >/dev/null 2>/dev/null;;
-      *)
+      *://*)
         curl -L -s "$from" -o "$dest";;
     esac
   fi
 }
 get_project_files whitelist $whitelist_path
 get_project_files excludes $excludelist_path
-
-if [ ! -e "$word_splitter" ]; then
-  echo "Retrieving w"
-  curl -s "$w_location" |\
-    perl -p -n -e "s</usr/share/dict/words><$dict>" > "$word_splitter"
-  get_word_splitter_status="${PIPESTATUS[0]} ${PIPESTATUS[1]}"
-  if [ "$get_word_splitter_status" != '0 0' ]; then
-    echo "$0 failed to retrieve/adapt word splitter ($w_location) ($get_word_splitter_status)"
-    rm -f "$word_splitter"
-    exit 6
-  fi
-  chmod u+x "$word_splitter"
-  echo "Retrieved."
-  ls -la "$word_splitter"
-fi
 
 if [ -n "$debug" ]; then
   echo "Clean up from previous run"
@@ -101,16 +75,20 @@ to_retrieve_whitelist() {
   case "$bucket" in
     gs://*)
       echo gsutil cp -Z $(project_file_path whitelist) whitelist.txt;;
-    *)
+    *://*)
       echo curl -L -s "$(project_file_path whitelist)" -o whitelist.txt;;
+    *)
+      echo cp "$(project_file_path whitelist)" whitelist.txt;;
   esac
 }
 to_publish_whitelist() {
   case "$bucket" in
     gs://*)
       echo gsutil cp -Z whitelist.txt $(project_file_path whitelist);;
-    *)
+    *://*)
       echo "# command to publish is not known. URL: $(project_file_path whitelist)";;
+    *)
+      echo cp whitelist.txt $(project_file_path whitelist);;
   esac
 }
 
