@@ -236,4 +236,4 @@ else
     spelling_warning "$title" "$new_output" "$instructions"
   ) > "$junit"
 fi
-quit
+quit 1
