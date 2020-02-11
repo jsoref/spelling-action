@@ -49,7 +49,12 @@ get_project_files() {
   if [ ! -e "$dest" ]; then
     from=$(project_file_path $file)
     echo "Retrieving cached $file from $from"
-    gsutil cp -Z $from $dest >/dev/null 2>/dev/null
+    case "$from" in
+      gs://*)
+        gsutil cp -Z $from $dest >/dev/null 2>/dev/null;;
+      *)
+        curl -L -s "$from" -o "$dest";;
+    esac
   fi
 }
 get_project_files whitelist $whitelist_path
@@ -93,10 +98,20 @@ printDetails() {
 }
 
 to_retrieve_whitelist() {
-  echo gsutil cp -Z $(project_file_path whitelist) whitelist.txt
+  case "$bucket" in
+    gs://*)
+      echo gsutil cp -Z $(project_file_path whitelist) whitelist.txt;;
+    *)
+      echo curl -L -s "$(project_file_path whitelist)" -o whitelist.txt;;
+  esac
 }
 to_publish_whitelist() {
-  echo gsutil cp -Z whitelist.txt $(project_file_path whitelist)
+  case "$bucket" in
+    gs://*)
+      echo gsutil cp -Z whitelist.txt $(project_file_path whitelist);;
+    *)
+      echo "# command to publish is not known. URL: $(project_file_path whitelist)";;
+  esac
 }
 
 if [ -z "$junit" ]; then
