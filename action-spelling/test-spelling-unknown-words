@@ -103,11 +103,14 @@ if [ -z "$junit" ]; then
   echo "Review results"
 else
   elapsed=$(echo $(( $(now) - $start)) | perl -pne 's/(\d{9})$/\.$1/')
-fi
 
 spelling_header='<?xml version="1.0" encoding="UTF-8"?>
 <testsuite>
   <testcase name="Spell checking" classname="com.soref.josh.spellchecker" time="'$elapsed'">'
+spelling_footer='  </testcase>
+</testsuite>'
+fi
+
 spelling_warning() {
   echo "$spelling_header"
   echo "    <failure message=\"$1\">
@@ -144,8 +147,6 @@ echo "
 new_words() {
   echo "$1" | perl -ne 'next unless s/^\+//;print'
 }
-spelling_footer='  </testcase>
-</testsuite>'
 
 quit() {
   if [ -n "$junit" ]; then
