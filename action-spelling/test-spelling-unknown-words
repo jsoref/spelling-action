@@ -213,4 +213,4 @@ instructions=$(
   make_instructions
 )
     spelling_warning "$title" "$(bullet_words "$new_output")" "$instructions"
-quit
+quit 1
