@@ -4,6 +4,9 @@
 # It is conceptually `f` which runs `w` (spelling-unknown-word-splitter)
 # plus `fchurn` which uses `dn` mostly rolled together.
 set -e
+if [ -n "$DEBUG" ]; then
+  set -x
+fi
 
 now() {
   date +'%s%N'
