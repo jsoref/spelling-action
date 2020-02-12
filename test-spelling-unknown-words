@@ -58,6 +58,11 @@ fi
 rm -f "$run_output"
 
 echo "Checking spelling..."
+if [ -n "$DEBUG" ]; then
+  echo 'Excluded paths:'
+  cat "$excludelist_path"
+fi
+
 (git 'ls-files' -z 2> /dev/null || hg locate -0) |\
   "$spellchecker/exclude.pl" |\
   xargs -0 "$word_splitter" |\
