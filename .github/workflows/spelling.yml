@@ -12,3 +12,4 @@ jobs:
         bucket: https://raw.githubusercontent.com/jsoref/spelling-action
         project: spelling-data
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        DEBUG: 1
