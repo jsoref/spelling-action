@@ -20,6 +20,7 @@ dchurn
 debian
 dest
 dirname
+Dockerfile
 eachother
 egrep
 elif
@@ -64,6 +65,7 @@ prepends
 qq
 README
 rediff
+regexp
 revset
 rpmfind
 rsqm
