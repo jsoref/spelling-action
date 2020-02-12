@@ -1,0 +1,92 @@
+#!/usr/bin/perl -w
+# ~/bin/convertpatch-to -c.
+#
+# Output modes:
+# perl (MODE=perl):
+#   s/teh/the/g
+# rs teh the
+# g teh; echo the
+my $diff=defined $ENV{DIFF} ? $ENV{DIFF} : '-r master -r spelling';
+my $mode=defined $ENV{MODE} ? $ENV{MODE} : '';
+my ($prefix, $infix, $suffix);
+if ($mode eq 'go') {
+    # go stands for `grep`(g) + `original`
+    # in theory someone might want `grep`(g) + `replacement`
+    $prefix='g "';
+    $infix=qq{"\necho "-> };
+    $suffix=qq{"\n};
+} elsif ($mode eq 'perl') {
+    $prefix='s/';
+    $infix='/';
+    $suffix=qq{/g;\n};
+} elsif ($mode eq 'rs' || 1) {
+    $prefix='rs "\\b';
+    $infix='\\b" "';
+    $suffix=qq{";\n};
+}
+
+if (scalar @ARGV) {
+    # this lets one do:
+    #   convertpatch-to -r spelling%master
+    #   convertpatch-to -r master -r spelling
+    $diff=join(' ', @ARGV);
+}
+
+my (@pairs, $skip);
+my ($a, $b) = ('', '');
+
+my $escape='\x1b\[0';
+my $boldred=$escape.';31;1;4m';
+my $boldgrn=$escape.';32;1;4m';
+my $purple=$escape.';35m';
+my $black=$escape.'m';
+
+open DIFF, "d --color always --no-show-function $diff -U0|";
+while (<DIFF>) {
+    if (/^$purple\@\@ -\d+,([^1]|1[^ ])|\@\@ -\d+,\d+ \+\d+,([^1]|1[^ ])/) {
+        $skip=1;
+        next;
+    }
+    if (/^$purple\@\@ -\d+,1 \+\d+,1 /) {
+        $skip=0;
+        next;
+    }
+    $skip=1 if /$boldred.*$boldred|$boldgrn.*$boldgrn/;
+    next if $skip;
+    next unless /^$escape;3[12]m/;
+    next unless s/.*?($escape;3[12];1;4m)/$1/g;
+    s/$black.*//;
+    if (m!$boldred(.*)\n!) {
+        $a=$1;
+    } elsif (m!$boldgrn(.*)\n!) {
+        $b=$1;
+        push @pairs, [$a, $b] if $a ne '';
+        $a="";
+        $b="";
+    }
+}
+close DIFF;
+
+sub uniq {
+    my @unique;
+    my %seen;
+
+    foreach my $i (@_) {
+        my ($a, $b) = @{$i};
+        my $value = (lc $b).' --- '.(lc $a)." --- $b --- $a";
+        if (!$seen{$value}) {
+            push @unique, $i;
+            $seen{$value} = $i
+        }
+    }
+    my @keys = sort keys %seen;
+    return map { $seen{$_} } @keys;
+    return @unique;
+}
+
+@pairs = uniq(@pairs);
+
+for my $pair (@pairs) {
+    my ($a, $b) = @{$pair};
+    print $prefix.$a.$infix.$b.$suffix;
+}
