@@ -12,3 +12,4 @@ jobs:
         bucket: ssh://git@github.com/jsoref/spelling-action.git
         project: spelling-data
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        DEBUG: 1
