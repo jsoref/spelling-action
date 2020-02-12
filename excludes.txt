@@ -1,0 +1,4 @@
+^f$
+^hgrmjunk$
+^tools\.md$
+^workflows\.md$
