@@ -19,7 +19,7 @@ whitelist_path="$spellchecker/whitelist.words.txt"
 excludelist_path="$spellchecker/excludes.txt"
 word_splitter="$spellchecker/spelling-unknown-word-splitter.pl"
 run_output="$spellchecker/unknown.words.txt"
-
+run_warnings="$temp/matcher.txt"
 wordlist=$bucket/english.words.txt
 
 if [ -z "$bucket" ]; then
@@ -63,7 +63,7 @@ if [ -n "$DEBUG" ]; then
   cat "$excludelist_path"
 fi
 
-(git 'ls-files' -z 2> /dev/null || hg locate -0) |\
+(git 'ls-files' -z 2> /dev/null) |\
   "$spellchecker/exclude.pl" |\
   xargs -0 "$word_splitter" |\
   "$word_splitter" |\
@@ -143,6 +143,25 @@ new_words() {
 }
 bullet_words() {
   echo "$1" | sed -e 's/^(.)/* $1/'
+  rm -f "$run_warnings"
+  if [ -z "$ONLY_REPORT_HEAD" ]; then
+    list="diff-tree --no-commit-id --name-only -r HEAD"
+  else
+    list='ls-files'
+  fi
+  export tokens="$1"
+  (git $list -z 2> /dev/null) |\
+    "$spellchecker/exclude.pl" |\
+    xargs -0 $spellchecker/reporter.pl > "$run_warnings.raw"
+  if [ -s "$run_warnings.raw" ]; then
+    (
+      echo "::add-matcher::.git/reporter.json"
+      cat "$run_warnings.raw"
+      echo "::remove-matcher owner=jsoref-spelling::"
+      cp $spellchecker/reporter.json .git/
+    ) > "$run_warnings"
+    rm -f "$run_warnings.raw"
+  fi
 }
 
 quit() {
@@ -166,6 +185,10 @@ comment() {
     else
       echo "$OUTPUT"
     fi
+  fi
+  if [ -e "$run_warnings" ]; then
+    cat "$run_warnings"
+    rm -f "$run_warnings"
   fi
 }
 
