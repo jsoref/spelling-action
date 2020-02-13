@@ -1,0 +1,21 @@
+name: 'Spell checking'
+description: 'Spell check commits'
+author: 'jsoref'
+inputs:
+  repo-token:
+    description: 'The GITHUB_TOKEN secret'
+  bucket:
+    description: 'Container for spelling exclusions and whitelist'
+    required: true
+  project:
+    description: 'Folder/Branch containing exclusions/whitelist'
+    required: true
+
+  debug:
+    description: 'Debug'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  env:
+    bucket: ${{ inputs.bucket }}
+    project: ${{ inputs.project }}
