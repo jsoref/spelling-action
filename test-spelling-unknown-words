@@ -144,14 +144,18 @@ new_words() {
 bullet_words() {
   echo "$1" | sed -e 's/^(.)/* $1/'
   rm -f "$run_warnings"
-  if [ -z "$ONLY_REPORT_HEAD" ]; then
-    list="diff-tree --no-commit-id --name-only -r HEAD"
-  else
-    list='ls-files'
-  fi
   export tokens="$1"
-  (git $list -z 2> /dev/null) |\
-    "$spellchecker/exclude.pl" |\
+  (
+  if [ -z "$ONLY_REPORT_HEAD" ]; then
+    export with_blame=1
+    git diff-tree --no-commit-id --name-only -r HEAD -z 2> /dev/null |
+    "$spellchecker/exclude.pl" |
+    xargs -0 git blame -b -s HEAD^..HEAD --
+  else
+    git ls-files -z 2> /dev/null |
+    "$spellchecker/exclude.pl"
+  fi
+  ) |
     xargs -0 $spellchecker/reporter.pl > "$run_warnings.raw"
   if [ -s "$run_warnings.raw" ]; then
     (
@@ -178,7 +182,7 @@ comment() {
     if [ -n "$GITHUB_EVENT_PATH" ]; then
       COMMENTS_URL=$(cat $GITHUB_EVENT_PATH | jq -r .pull_request.comments_url)
     fi
-    if [ -z "${COMMENTS_URL##*:*}" ]; then
+    if [ -n "$COMMENTS_URL" ] && [ -z "${COMMENTS_URL##*:*}" ]; then
       echo $PAYLOAD
       echo $COMMENTS_URL
       curl -s -S -H "Authorization: token $GITHUB_TOKEN" --header "Content-Type: application/json" --data "$PAYLOAD" "$COMMENTS_URL" > /dev/null
