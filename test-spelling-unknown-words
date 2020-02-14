@@ -19,6 +19,7 @@ whitelist_path="$spellchecker/whitelist.words.txt"
 excludelist_path="$spellchecker/excludes.txt"
 word_splitter="$spellchecker/spelling-unknown-word-splitter.pl"
 run_output="$spellchecker/unknown.words.txt"
+run_files="$temp/reporter-input.txt"
 run_warnings="$temp/matcher.txt"
 wordlist=$bucket/english.words.txt
 
@@ -63,9 +64,16 @@ if [ -n "$DEBUG" ]; then
   cat "$excludelist_path"
 fi
 
+xargs_zero() {
+  if [ $(uname) = "Linux" ]; then
+    xargs --no-run-if-empty -0 "$@"
+  else
+    args="$*" "$spellchecker/xargs_zero"
+  fi
+}
 (git 'ls-files' -z 2> /dev/null) |\
   "$spellchecker/exclude.pl" |\
-  xargs -0 "$word_splitter" |\
+  xargs_zero "$word_splitter" |\
   "$word_splitter" |\
   perl -p -n -e 's/ \(.*//' > "$run_output"
   word_splitter_status="${PIPESTATUS[2]} ${PIPESTATUS[3]}"
@@ -145,18 +153,18 @@ bullet_words() {
   echo "$1" | sed -e 's/^(.)/* $1/'
   rm -f "$run_warnings"
   export tokens="$1"
-  (
   if [ -z "$ONLY_REPORT_HEAD" ]; then
+    rm -f "$run_files"
     export with_blame=1
     git diff-tree --no-commit-id --name-only -r HEAD -z 2> /dev/null |
     "$spellchecker/exclude.pl" |
-    xargs -0 git blame -b -s HEAD^..HEAD --
+    xargs_zero git blame -b -f -s HEAD^..HEAD -- > "$run_files"
+    $spellchecker/reporter.pl < "$run_files" > "$run_warnings.raw"
+    rm -f "$run_files"
   else
     git ls-files -z 2> /dev/null |
-    "$spellchecker/exclude.pl"
+    "$spellchecker/exclude.pl" | xargs_zero $spellchecker/reporter.pl > "$run_warnings.raw"
   fi
-  ) |
-    xargs -0 $spellchecker/reporter.pl > "$run_warnings.raw"
   if [ -s "$run_warnings.raw" ]; then
     (
       echo "::add-matcher::.git/reporter.json"
