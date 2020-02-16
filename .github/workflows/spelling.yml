@@ -9,6 +9,6 @@ jobs:
     - uses: actions/checkout@v2.0.0
     - uses: ./
       env:
-        bucket: https://raw.githubusercontent.com/jsoref/spelling-action
+        bucket: ssh://git@github.com/jsoref/spelling-action.git
         project: spelling-data
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
