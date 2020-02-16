@@ -50,6 +50,7 @@ jsoref
 junit
 linux
 maxdepth
+metadata
 mindepth
 misspellled
 mkdir
@@ -73,6 +74,7 @@ rtn
 Soref
 spellchecker
 spellchecking
+ssh
 STDERR
 substr
 svg
