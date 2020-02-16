@@ -51,6 +51,13 @@ get_project_files() {
     from=$(project_file_path $file)
     echo "Retrieving cached $file from $from"
     case "$from" in
+      ssh://git@*|git@*)
+        (
+          cd $temp
+          repo=$(echo "$bucket" | perl -pne 's#(?:ssh://|)git\@github.com[:/]([^/]*)/(.*.git)#https://github.com/$1/$2#')
+          [ -d metadata ] || git clone --depth 1 $repo --single-branch --branch $project metadata
+          cp metadata/$file.txt $dest
+        );;
       gs://*)
         gsutil cp -Z $from $dest >/dev/null 2>/dev/null;;
       *://*)
@@ -97,6 +104,8 @@ printDetails() {
 
 to_retrieve_whitelist() {
   case "$bucket" in
+    ssh://git@*|git@*)
+      echo "git clone --depth 1 $bucket --single-branch --branch $project metadata; cp metadata/whitelist.txt .";;
     gs://*)
       echo gsutil cp -Z $(project_file_path whitelist) whitelist.txt;;
     *://*)
@@ -107,6 +116,8 @@ to_retrieve_whitelist() {
 }
 to_publish_whitelist() {
   case "$bucket" in
+    ssh://git@*|git@*)
+      echo "cp whitelist.txt metadata; (cd metadata; git commit whitelist.txt -m 'Updating whitelist'; git push)";;
     gs://*)
       echo gsutil cp -Z whitelist.txt $(project_file_path whitelist);;
     *://*)
