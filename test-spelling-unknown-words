@@ -199,7 +199,12 @@ comment() {
     echo "Preparing a comment"
     PAYLOAD=$(echo '{}' | jq --arg body "$OUTPUT" '.body = $body')
     if [ -n "$GITHUB_EVENT_PATH" ]; then
-      COMMENTS_URL=$(cat $GITHUB_EVENT_PATH | jq -r .pull_request.comments_url)
+      case "$GITHUB_EVENT_NAME" in
+        pull_request)
+          COMMENTS_URL=$(cat $GITHUB_EVENT_PATH | jq -r .pull_request.comments_url);;
+        push)
+          COMMENTS_URL=$(cat $GITHUB_EVENT_PATH | jq -r .repository.commits_url | perl -pne 's#\{/sha}#/'$GITHUB_SHA'/comments#');;
+      esac
     fi
     if [ -n "$COMMENTS_URL" ] && [ -z "${COMMENTS_URL##*:*}" ]; then
       echo $PAYLOAD
