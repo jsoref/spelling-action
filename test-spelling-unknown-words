@@ -136,7 +136,9 @@ $2"
   fi
   spelling_body "$out" "$3"
   OUTPUT="$OUTPUT$spelling_footer"
-  comment
+  if [ -n "$VERBOSE" ]; then
+    comment
+  fi
 }
 spelling_body() {
   err="$2"
