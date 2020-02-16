@@ -275,7 +275,7 @@ make_instructions() {
     echo "$patch_add"
     echo '"'
   fi
-  echo ') | sort -u -f > new_whitelist.txt && mv new_whitelist.txt whitelist.txt'
+  echo ') | sort -u -f | grep . > new_whitelist.txt && mv new_whitelist.txt whitelist.txt'
 )"
   to_publish_whitelist
 }
