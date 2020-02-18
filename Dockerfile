@@ -5,8 +5,14 @@ RUN\
  DEBIAN_FRONTEND=noninteractive apt-get install -qq curl git jq < /dev/null > /dev/null
 
 WORKDIR /app
-COPY docker-setup exclude.pl reporter.json reporter.pl test-spelling-unknown-words ./
-COPY w spelling-unknown-word-splitter.pl
+COPY \
+ docker-setup \
+ exclude.pl \
+ reporter.json \
+ reporter.pl \
+ spelling-unknown-word-splitter.pl \
+ test-spelling-unknown-words \
+ ./
 
 RUN ./docker-setup &&\
  rm docker-setup
