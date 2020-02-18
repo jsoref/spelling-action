@@ -22,5 +22,4 @@ LABEL "maintainer"="Josh Soref <jsoref@noreply.users.github.com>"
 COPY test-spelling-unknown-words test-spelling-unknown-words.sh
 COPY exclude exclude.pl
 
-RUN chmod +x test-spelling-unknown-words.sh exclude.pl spelling-unknown-word-splitter.pl
 ENTRYPOINT ["/app/test-spelling-unknown-words.sh"]
