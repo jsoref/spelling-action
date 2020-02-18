@@ -10,13 +10,12 @@ COPY w spelling-unknown-word-splitter.pl
 RUN ./docker-setup &&\
     rm docker-setup
 
-LABEL "com.github.actions.name"="Spell Checker"
-LABEL "com.github.actions.description"="Check repository for spelling errors"
-LABEL "com.github.actions.icon"="edit-3"
-LABEL "com.github.actions.color"="red"
-
-LABEL "repository"="http://github.com/jsoref/spelling-action"
-LABEL "homepage"="http://github.com/jsoref/spelling-action/tree/master/README.md"
-LABEL "maintainer"="Josh Soref <jsoref@noreply.users.github.com>"
+LABEL "com.github.actions.name"="Spell Checker"\
+      "com.github.actions.description"="Check repository for spelling errors" \
+      "com.github.actions.icon"="edit-3" \
+      "com.github.actions.color"="red" \
+      "repository"="http://github.com/jsoref/spelling-action" \
+      "homepage"="http://github.com/jsoref/spelling-action/tree/master/README.md" \
+      "maintainer"="Josh Soref <jsoref@noreply.users.github.com>"
 
 ENTRYPOINT ["/app/test-spelling-unknown-words"]
